@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered disease prediction based on symptoms">
+    <title>SymptomAI Disease Predictor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Medical Disclaimer Banner -->
+    <div class="disclaimer-banner" role="alert">
+        <div class="disclaimer-content">
+            <span class="warning-icon" aria-hidden="true">⚠️</span>
+            <p>This tool is for informational purposes only. Always consult a healthcare professional for medical advice.</p>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <main class="container">
+        <!-- Symptom Selection Section -->
+        <section id="symptom-section" class="section" aria-label="Symptom Selection">
+            <header class="header">
+                <h1>SymptomAI Disease Predictor</h1>
+                <p class="subtitle">AI-powered disease prediction based on your symptoms</p>
+            </header>
+
+            <div class="search-container">
+                <label for="symptom-search" class="visually-hidden">Search for symptoms</label>
+                <input 
+                    type="text" 
+                    id="symptom-search" 
+                    class="search-input" 
+                    placeholder="Search for symptoms (e.g., fever, cough, headache)..."
+                    autocomplete="off"
+                    aria-autocomplete="list"
+                    aria-controls="symptom-dropdown"
+                    aria-expanded="false"
+                >
+                
+                <!-- Dropdown Results -->
+                <div id="symptom-dropdown" class="dropdown" role="listbox" aria-label="Symptom suggestions"></div>
+            </div>
+
+            <!-- Selected Symptoms Chips -->
+            <div class="chips-container" id="chips-container" aria-live="polite" aria-label="Selected symptoms"></div>
+
+            <!-- Symptom Counter -->
+            <p class="symptom-counter" id="symptom-counter" aria-live="polite">
+                <span id="symptom-count">0</span> symptom(s) selected
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button 
+                    id="clear-all-btn" 
+                    class="btn btn-secondary" 
+                    style="display: none;"
+                    aria-label="Clear all selected symptoms"
+                >
+                    Clear All
+                </button>
+                <button 
+                    id="get-diagnosis-btn" 
+                    class="btn btn-primary" 
+                    disabled
+                    aria-label="Get diagnosis based on selected symptoms"
+                >
+                    <span class="btn-text">Get Diagnosis</span>
+                    <span class="loading-spinner" style="display: none;">⏳ Analyzing...</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="section" style="display: none;" aria-label="Diagnosis Results">
+            <button id="back-btn" class="btn-back" aria-label="Go back to symptom selection">
+                ← Back
+            </button>
+
+            <h2 class="results-heading">Your Diagnosis Results</h2>
+
+            <!-- Prediction Cards Container (populated dynamically) -->
+            <div id="predictions-container" class="predictions-container" aria-live="polite"></div>
+
+            <!-- Selected Symptoms Display -->
+            <div class="selected-symptoms-display">
+                <h3>Based on Selected Symptoms:</h3>
+                <ul id="symptoms-list" class="symptoms-list"></ul>
+            </div>
+
+            <!-- Check Another Condition Button -->
+            <button id="check-another-btn" class="btn btn-primary">
+                Check Another Condition
+            </button>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

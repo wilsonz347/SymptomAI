@@ -4,5 +4,5 @@ flask
 scipy
 matplotlib
 seaborn
-request
+requests
 flask-cors

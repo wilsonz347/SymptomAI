@@ -382,7 +382,6 @@ const symptoms = [
 let selectedSymptoms = [];
 let isLoading = false;
 
-
 const searchInput = document.getElementById('symptom-search');
 const dropdown = document.getElementById('symptom-dropdown');
 const chipsContainer = document.getElementById('chips-container');
@@ -396,7 +395,6 @@ const checkAnotherBtn = document.getElementById('check-another-btn');
 const predictionsContainer = document.getElementById('predictions-container');
 const symptomsList = document.getElementById('symptoms-list');
 
-
 /**
  * Update the UI state based on selected symptoms
  */
@@ -404,17 +402,38 @@ function updateUI() {
     const count = selectedSymptoms.length;
     symptomCount.textContent = count;
     
-    // Show/hide clear all button
     clearAllBtn.style.display = count > 0 ? 'inline-flex' : 'none';
-    
-    // Enable/disable diagnosis button
     getDiagnosisBtn.disabled = count === 0;
     
     console.log(`UI updated: ${count} symptom(s) selected`);
 }
 
 /**
- * Filter symptoms based on search text
+ * Highlight matching text in search results
+ * @param {string} text - The full text
+ * @param {string} query - The search query
+ * @returns {string} HTML string with highlighted match
+ */
+function highlightMatch(text, query) {
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+    
+    if (index === -1) return text;
+    
+    const before = text.substring(0, index);
+    const match = text.substring(index, index + query.length);
+    const after = text.substring(index + query.length);
+    
+    return `${before}<strong style="color: var(--primary-blue); font-weight: 600;">${match}</strong>${after}`;
+}
+
+/**
+ * Filter symptoms using PREFIX MATCHING (starts with)
+ * @param {string} searchText - The text to search for
+ */
+/**
+ * Filter symptoms using STRICT PREFIX MATCHING (starts with only)
  * @param {string} searchText - The text to search for
  */
 function filterSymptoms(searchText) {
@@ -428,30 +447,35 @@ function filterSymptoms(searchText) {
         return;
     }
     
-    // Filter symptoms that match the query and aren't already selected
-    const filtered = symptoms.filter(symptom => 
-        symptom.name.toLowerCase().includes(query) &&
-        !selectedSymptoms.some(s => s.id === symptom.id)
-    ).slice(0, 10); // Limit to 10 results
+    // Filter symptoms that START WITH the query (first word only) and aren't already selected
+    const filtered = symptoms.filter(symptom => {
+        const symptomLower = symptom.name.toLowerCase();
+        const isNotSelected = !selectedSymptoms.some(s => s.id === symptom.id);
+        
+        // STRICT: Only match if the entire symptom name starts with the query
+        const startsWithQuery = symptomLower.startsWith(query);
+        
+        return isNotSelected && startsWithQuery;
+    }).slice(0, 10); // Limit to 10 results
     
     // Display results
     if (filtered.length > 0) {
         dropdown.innerHTML = filtered.map(symptom => 
-            `<div class="dropdown-item" data-id="${symptom.id}" role="option">
-                ${symptom.name}
+            `<div class="dropdown-item" data-id="${symptom.id}" role="option" tabindex="0">
+                ${highlightMatch(symptom.name, query)}
             </div>`
         ).join('');
         dropdown.classList.add('show');
         searchInput.setAttribute('aria-expanded', 'true');
+        
+        console.log(`Found ${filtered.length} symptoms starting with: "${query}"`);
     } else {
         dropdown.innerHTML = '<div class="dropdown-empty">No matching symptoms found</div>';
         dropdown.classList.add('show');
         searchInput.setAttribute('aria-expanded', 'true');
+        console.log(`No symptoms found starting with: "${query}"`);
     }
-    
-    console.log(`Filtered ${filtered.length} symptoms for query: "${query}"`);
 }
-
 /**
  * Select a symptom and add it to the list
  * @param {number} symptomId - The ID of the symptom to select
@@ -494,6 +518,7 @@ function selectSymptom(symptomId) {
     dropdown.classList.remove('show');
     dropdown.innerHTML = '';
     searchInput.setAttribute('aria-expanded', 'false');
+    searchInput.focus();
     
     // Update UI
     updateUI();
@@ -506,18 +531,14 @@ function selectSymptom(symptomId) {
  * @param {number} symptomId - The ID of the symptom to remove
  */
 function removeSymptom(symptomId) {
-    // Remove from array
     selectedSymptoms = selectedSymptoms.filter(s => s.id !== symptomId);
     
-    // Remove chip from DOM
     const chip = chipsContainer.querySelector(`[data-id="${symptomId}"]`);
     if (chip) {
         chip.remove();
     }
     
-    // Update UI
     updateUI();
-    
     console.log(`Removed symptom with ID: ${symptomId}`);
 }
 
@@ -562,14 +583,12 @@ async function getDiagnosis() {
         return;
     }
     
-    // Extract symptom IDs
     const symptomIds = selectedSymptoms.map(s => s.id);
     console.log('Requesting diagnosis for symptom IDs:', symptomIds);
     
     showLoading();
     
     try {
-        // Make API request
         const response = await fetch('http://localhost:5000/predict', {
             method: 'POST',
             headers: {
@@ -585,12 +604,10 @@ async function getDiagnosis() {
         const data = await response.json();
         console.log('API response received:', data);
         
-        // Validate response
         if (!data.predictions || !Array.isArray(data.predictions)) {
             throw new Error('Invalid response format from API');
         }
         
-        // Display results
         displayResults(data.predictions);
         
     } catch (error) {
@@ -608,16 +625,13 @@ async function getDiagnosis() {
 function displayResults(predictions) {
     console.log('Displaying results for predictions:', predictions);
     
-    // Clear previous results
     predictionsContainer.innerHTML = '';
     symptomsList.innerHTML = '';
     
-    // Generate prediction cards
     predictions.slice(0, 3).forEach((prediction, index) => {
         const confidence = prediction.confidence;
         const percentage = Math.round(confidence * 100);
         
-        // Determine confidence level and color
         let confidenceClass = 'low-confidence';
         let progressClass = 'low';
         
@@ -629,7 +643,6 @@ function displayResults(predictions) {
             progressClass = 'medium';
         }
         
-        // Create card HTML
         const card = document.createElement('div');
         card.className = `prediction-card ${confidenceClass}`;
         card.innerHTML = `
@@ -647,18 +660,14 @@ function displayResults(predictions) {
         predictionsContainer.appendChild(card);
     });
     
-    // Display selected symptoms
     selectedSymptoms.forEach(symptom => {
         const li = document.createElement('li');
         li.textContent = symptom.name;
         symptomsList.appendChild(li);
     });
     
-    // Switch to results view
     symptomSection.style.display = 'none';
     resultsSection.style.display = 'block';
-    
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     console.log('Results displayed successfully');
@@ -697,14 +706,14 @@ dropdown.addEventListener('click', (e) => {
     }
 });
 
-// Clear search on focus (optional UX improvement)
+// Search input focus
 searchInput.addEventListener('focus', () => {
     if (searchInput.value.trim() !== '') {
         filterSymptoms(searchInput.value);
     }
 });
 
-// Hide dropdown when clicking outside
+// Click outside to hide dropdown
 document.addEventListener('click', (e) => {
     if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
         dropdown.classList.remove('show');
@@ -712,39 +721,56 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Clear all button
-clearAllBtn.addEventListener('click', clearAllSymptoms);
-
-// Get diagnosis button
-getDiagnosisBtn.addEventListener('click', getDiagnosis);
-
-// Back button
-backBtn.addEventListener('click', navigateBack);
-
-// Check another button
-checkAnotherBtn.addEventListener('click', checkAnother);
-
-// Keyboard navigation for accessibility
+// Keyboard navigation for dropdown
 searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && dropdown.classList.contains('show')) {
-        const firstItem = dropdown.querySelector('.dropdown-item');
-        if (firstItem && firstItem.dataset.id) {
-            const symptomId = parseInt(firstItem.dataset.id);
-            selectSymptom(symptomId);
+    const dropdownItems = dropdown.querySelectorAll('.dropdown-item');
+    const currentFocus = dropdown.querySelector('.dropdown-item:focus');
+    let index = Array.from(dropdownItems).indexOf(currentFocus);
+    
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        index = index < dropdownItems.length - 1 ? index + 1 : 0;
+        if (dropdownItems[index]) {
+            dropdownItems[index].focus();
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        index = index > 0 ? index - 1 : dropdownItems.length - 1;
+        if (dropdownItems[index]) {
+            dropdownItems[index].focus();
+        }
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (currentFocus && currentFocus.dataset.id) {
+            selectSymptom(parseInt(currentFocus.dataset.id));
+        } else if (dropdownItems.length > 0 && dropdownItems[0].dataset.id) {
+            selectSymptom(parseInt(dropdownItems[0].dataset.id));
         }
     } else if (e.key === 'Escape') {
         dropdown.classList.remove('show');
         searchInput.setAttribute('aria-expanded', 'false');
+        searchInput.focus();
     }
 });
 
-// ===================================
-// INITIALIZATION
-// ===================================
+// Dropdown item keyboard support
+dropdown.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('dropdown-item')) {
+        e.preventDefault();
+        const symptomId = parseInt(e.target.dataset.id);
+        if (symptomId) {
+            selectSymptom(symptomId);
+        }
+    }
+});
+
+// Button event listeners
+clearAllBtn.addEventListener('click', clearAllSymptoms);
+getDiagnosisBtn.addEventListener('click', getDiagnosis);
+backBtn.addEventListener('click', navigateBack);
+checkAnotherBtn.addEventListener('click', checkAnother);
 
 console.log('SymptomAI Disease Predictor initialized');
 console.log(`Loaded ${symptoms.length} symptoms`);
-console.log('Waiting for user input...');
-
-// Initial UI state
+console.log('Prefix matching enabled: type "e" for symptoms starting with "e"');
 updateUI();

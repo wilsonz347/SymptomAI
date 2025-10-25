@@ -668,7 +668,7 @@ function displayResults(predictions) {
     
     symptomSection.style.display = 'none';
     resultsSection.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // window.scrollTo({ top: 0, behavior: 'smooth' });
     
     console.log('Results displayed successfully');
 }
@@ -679,7 +679,7 @@ function displayResults(predictions) {
 function navigateBack() {
     resultsSection.style.display = 'none';
     symptomSection.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // window.scrollTo({ top: 0, behavior: 'smooth' });
     console.log('Navigated back to symptom selection');
 }
 

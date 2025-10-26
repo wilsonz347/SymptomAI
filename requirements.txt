@@ -1,8 +1,9 @@
 pandas
 numpy
 flask
-scipy
+scikit-learn
 matplotlib
-seaborn
-request
+requests
 flask-cors
+torch
+tqdm

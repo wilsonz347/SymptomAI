@@ -3,7 +3,7 @@ numpy
 flask
 scikit-learn
 matplotlib
-requests
+request
 flask-cors
 torch
 tqdm

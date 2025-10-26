@@ -34,7 +34,6 @@ def _extract_json(text: str) -> str | None:
 
 class DiseaseAdvisor:
     def __init__(self, api_key: str = None, model: str = "gpt-4o-mini"):
-        # If you prefer env var: OpenAI() will pick OPENAI_API_KEY automatically
         self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
         self.model = model
 

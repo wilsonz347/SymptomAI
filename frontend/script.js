@@ -559,7 +559,7 @@ async function getDiagnosis() {
             throw new Error('Invalid response format from API');
         }
         
-        displayResults(data.predictions);
+        displayResults(data.predictions, data.summaries || {});
         
     } catch (error) {
         console.error('Error fetching diagnosis:', error);
@@ -572,9 +572,11 @@ async function getDiagnosis() {
 /**
  * Display diagnosis results
  * @param {Array} predictions - Array of prediction objects
+ * @param {Object} summaries - Object containing disease summaries
  */
-function displayResults(predictions) {
+function displayResults(predictions, summaries = {}) {
     console.log('Displaying results for predictions:', predictions);
+    console.log('Summaries received:', summaries);
     
     predictionsContainer.innerHTML = '';
     symptomsList.innerHTML = '';
@@ -582,6 +584,8 @@ function displayResults(predictions) {
     predictions.slice(0, 3).forEach((prediction, index) => {
         const confidence = prediction.confidence;
         const percentage = Math.round(confidence * 100);
+        const diseaseName = prediction.disease;
+        const summaryData = summaries[diseaseName];
         
         let confidenceClass = 'low-confidence';
         let progressClass = 'low';
@@ -594,11 +598,34 @@ function displayResults(predictions) {
             progressClass = 'medium';
         }
         
+        // Format the summary HTML
+        let summaryHTML = '';
+        if (summaryData && !summaryData.error) {
+            const severity = summaryData.severity || 'unknown';
+            const actions = summaryData.actions || [];
+            
+            summaryHTML = `
+                <div class="disease-summary">
+                    <div class="severity-badge severity-${severity.toLowerCase()}">${severity.toUpperCase()}</div>
+                    <h4>Recommended Actions:</h4>
+                    <ul class="action-list">
+                        ${actions.map(action => `<li>${action}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        } else {
+            summaryHTML = `
+                <div class="disease-summary">
+                    <p class="summary-unavailable">Summary information not available for this condition.</p>
+                </div>
+            `;
+        }
+        
         const card = document.createElement('div');
         card.className = `prediction-card ${confidenceClass}`;
         card.innerHTML = `
             <span class="prediction-rank">#${index + 1} Most Likely</span>
-            <h3 class="disease-name">${prediction.disease}</h3>
+            <h3 class="disease-name">${diseaseName}</h3>
             <div class="confidence-info">
                 <span class="confidence-label">Confidence Level</span>
                 <span class="confidence-value">${percentage}%</span>
@@ -606,6 +633,7 @@ function displayResults(predictions) {
             <div class="progress-bar">
                 <div class="progress-fill ${progressClass}" style="width: ${percentage}%"></div>
             </div>
+            ${summaryHTML}
         `;
         
         predictionsContainer.appendChild(card);
@@ -619,7 +647,6 @@ function displayResults(predictions) {
     
     symptomSection.style.display = 'none';
     resultsSection.style.display = 'block';
-    // window.scrollTo({ top: 0, behavior: 'smooth' });
     
     console.log('Results displayed successfully');
 }

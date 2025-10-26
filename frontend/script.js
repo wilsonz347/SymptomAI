@@ -583,8 +583,8 @@ async function getDiagnosis() {
         return;
     }
     
-    const symptomIds = selectedSymptoms.map(s => s.id);
-    console.log('Requesting diagnosis for symptom IDs:', symptomIds);
+    const symptomIds = selectedSymptoms.map(s => s.name.replace(/ /g, '_'));
+    console.log('Requesting diagnosis for symptoms:', symptomIds);
     
     showLoading();
     

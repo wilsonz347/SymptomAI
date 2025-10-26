@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from model.input_preds import DiseasePredictor
+from model.chat_plugin import DiseaseAdvisor
 import ML_files.src.config as Config
 
 # Model path: backend/model/model.pth
@@ -45,8 +46,17 @@ def prediction():
         symptoms = data.get('symptom_ids', [])
 
         predictions = predictor.get_top_predictions(symptoms, top_k=3)
-            
-        return jsonify({'predictions': predictions}), 200
+        
+        disease_names = [pred['disease'] for pred in predictions]
+        
+        # Get summaries for predicted diseases
+        advisor = DiseaseAdvisor()
+        summaries = advisor.assess_multiple(disease_names)
+        
+        return jsonify({
+            'predictions': predictions,
+            'summaries': summaries
+        }), 200
     
     except Exception as e:
         print(f"Error: {str(e)}")

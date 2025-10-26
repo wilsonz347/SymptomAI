@@ -3,10 +3,39 @@ import ML_files.src.config as Config
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
+import os
+import torch.nn as nn
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "model.pth")
+
+class FastDiseaseNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(FastDiseaseNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.BatchNorm1d(hidden_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+
+            nn.Linear(hidden_dim // 2, hidden_dim //4),
+            nn.BatchNorm1d(hidden_dim // 4),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+
+            nn.Linear(hidden_dim // 4, output_dim)
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 class DiseasePredictor:
-    def __init__(self, model_path="/Users/arush/Documents/ML Projects/DS_X_Hackaton/datadawgs/backend/model/model.pth", training_data_path=Config.Config.PROCESSED_TRAIN_PATH):
+    def __init__(self, model_path=Config.Config.MODEL_SAVE_PATH, training_data_path=Config.Config.PROCESSED_TRAIN_PATH):
         self.device = torch.device(Config.Config.DEVICE)
         if training_data_path:
             df = pd.read_csv(training_data_path)
@@ -22,8 +51,9 @@ class DiseasePredictor:
             raise ValueError("Training data path must be provided to initialize the predictor.")
         
         hidden_dim = 256
-        self.model = torch.load(model_path)
-        self.model.load_state_dict(self.model)
+        self.model = FastDiseaseNet(input_dim, hidden_dim, output_dim).to(self.device)
+        state_dict = torch.load(model_path, map_location=self.device)
+        self.model.load_state_dict(state_dict)
         self.model.eval()
 
         print(f"✓ Model loaded from '{model_path}' on {self.device}")
@@ -80,7 +110,7 @@ class DiseasePredictor:
 
 if __name__ == "__main__":
     predictor = DiseasePredictor(
-        model_path='model.pth',  # Your saved model
+        model_path=model_path,  # Your saved model
         training_data_path=Config.Config.PROCESSED_TRAIN_PATH  # Same CSV used for training
     )
     sample_symptoms = ["fever", "cough", "headache"]

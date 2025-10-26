@@ -12,8 +12,11 @@ from flask_cors import CORS
 from model.input_preds import DiseasePredictor
 import ML_files.src.config as Config
 
-# backend/model/model.pth
+# Model path: backend/model/model.pth
 model_path = os.path.join(BASE_DIR, "model", "model.pth")
+
+# Training data path: root/ML_files/data/processed/train.csv
+training_data_path = os.path.join(ROOT_DIR, "ML_files", "data", "processed", "train.csv")
 
 '''
 import json
@@ -32,7 +35,7 @@ CORS(app)
 # Initialize the predictor
 predictor = DiseasePredictor(
     model_path=model_path,
-    training_data_path=Config.Config.PROCESSED_TRAIN_PATH
+    training_data_path=training_data_path
 )
 
 @app.route('/predict', methods = ['POST'])

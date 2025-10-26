@@ -88,7 +88,7 @@ best_acc = 0
 patience, patience_counter = 7, 0
 
 # --- Mixed precision (for GPU) ---
-scaler = torch.amp.GradScaler(enabled=(torch.device.type == device))
+scaler = torch.amp.GradScaler(enabled=(device.type == 'cuda'))
 
 # --- Training loop ---
 epochs = 50
@@ -112,28 +112,52 @@ for epoch in range(epochs):
     # --- Evaluate each epoch ---
     model.eval()
     y_pred_list, y_true_list = [], []
+    all_top3_preds = []
+    all_top3_probs = []
+    
     with torch.no_grad():
         for batch_X, batch_y in test_loader:
             batch_X = batch_X.to(device)
             y_output_logits = model(batch_X)
-            topk_probs, topk_indices = torch.topk(torch.softmax(y_output_logits, dim=1), k=3, dim=1)
-            topk_probs = topk_probs.cpu().numpy()       # shape: [batch_size, 3]
+            
+            # Get probabilities from logits
+            probs = torch.softmax(y_output_logits, dim=1)
+            
+            # Get top 3 predictions
+            topk_probs, topk_indices = torch.topk(probs, k=3, dim=1)
+            topk_probs = topk_probs.cpu().numpy()
             topk_indices = topk_indices.cpu().numpy()
+            
+            # Convert indices to labels
             top3_labels = le.inverse_transform(topk_indices.flatten()).reshape(topk_indices.shape)
             
-            preds = torch.argmax(torch.sigmoid(y_output_logits), dim=1).cpu().numpy()
+            # Get the single best prediction (FIX: use softmax, not sigmoid)
+            preds = torch.argmax(probs, dim=1).cpu().numpy()
+            
             y_pred_list.extend(preds)
             y_true_list.extend(batch_y.numpy())
+            all_top3_preds.extend(top3_labels)
+            all_top3_probs.extend(topk_probs)
 
     acc = accuracy_score(y_true_list, y_pred_list)
     scheduler.step(acc)
     print(f"Epoch {epoch+1:02d} | Loss: {total_loss/len(train_loader):.4f} | Val Acc: {acc:.4f}")
+    
+    # Display sample top 3 predictions for first 5 test samples
+    if epoch == 0 or (epoch + 1) % 10 == 0:  # Show every 10 epochs
+        print("\n--- Sample Top 3 Predictions (first 5 test samples) ---")
+        for i in range(min(5, len(all_top3_preds))):
+            true_label = le.inverse_transform([y_true_list[i]])[0]
+            print(f"Sample {i+1} - True: {true_label}")
+            for j in range(3):
+                print(f"  #{j+1}: {all_top3_preds[i][j]} (prob: {all_top3_probs[i][j]:.3f})")
+        print()
 
     # --- Early stopping ---
     if acc > best_acc:
         best_acc = acc
         patience_counter = 0
-        torch.save(model.state_dict(), "best_disease_model.pt")
+        torch.save(model.state_dict(), Config.MODEL_SAVE_PATH)
     else:
         patience_counter += 1
         if patience_counter >= patience:
@@ -142,24 +166,56 @@ for epoch in range(epochs):
 
 torch.save(model.state_dict(), Config.MODEL_SAVE_PATH)
 
-
-'''
 # --- Load best model ---
-model.load_state_dict(torch.load("best_disease_model.pt"))
+#model.load_state_dict(torch.load("best_disease_model.pt"))
 
-# --- Final evaluation ---
+# --- Final evaluation with detailed predictions ---
+print("\n=== FINAL EVALUATION ===")
 model.eval()
 y_pred_list, y_true_list = [], []
+all_top3_preds = []
+all_top3_probs = []
+
 with torch.no_grad():
     for batch_X, batch_y in test_loader:
         batch_X = batch_X.to(device)
         outputs = model(batch_X)
-        preds = torch.argmax(outputs, dim=1).cpu().numpy()
+        
+        # Get probabilities
+        probs = torch.softmax(outputs, dim=1)
+        
+        # Get top 3 predictions
+        topk_probs, topk_indices = torch.topk(probs, k=3, dim=1)
+        topk_probs = topk_probs.cpu().numpy()
+        topk_indices = topk_indices.cpu().numpy()
+        
+        # Convert to labels
+        top3_labels = le.inverse_transform(topk_indices.flatten()).reshape(topk_indices.shape)
+        
+        # Get single best prediction
+        preds = torch.argmax(probs, dim=1).cpu().numpy()
+        
         y_pred_list.extend(preds)
         y_true_list.extend(batch_y.numpy())
+        all_top3_preds.extend(top3_labels)
+        all_top3_probs.extend(topk_probs)
 
 acc = accuracy_score(y_true_list, y_pred_list)
-print("\n✅ Final Test Accuracy:", acc)
+print(f"\n✅ Final Test Accuracy: {acc:.4f}")
+
+# --- Display detailed top 3 predictions for a sample ---
+print("\n--- Detailed Top 3 Predictions (first 10 test samples) ---")
+for i in range(min(10, len(all_top3_preds))):
+    true_label = le.inverse_transform([y_true_list[i]])[0]
+    pred_label = le.inverse_transform([y_pred_list[i]])[0]
+    is_correct = "✓" if y_true_list[i] == y_pred_list[i] else "✗"
+    
+    print(f"\nSample {i+1} {is_correct}")
+    print(f"  True label: {true_label}")
+    print(f"  Top 3 predictions:")
+    for j in range(3):
+        marker = "→" if all_top3_preds[i][j] == true_label else " "
+        print(f"    {marker} {j+1}. {all_top3_preds[i][j]:<30} (prob: {all_top3_probs[i][j]:.3%})")
 
 # --- Classification report ---
 labels_in_test_or_pred = np.unique(np.concatenate([y_true_list, y_pred_list]))
@@ -175,7 +231,18 @@ report_dict = classification_report(
 
 report_df = pd.DataFrame(report_dict).transpose()
 class_rows = report_df.iloc[:-3]
-print("\nClassification Report (per class):")
+print("\n=== Classification Report (per class) ===")
 print(class_rows)
 
-'''
+# --- Top 3 accuracy metric ---
+print("\n=== Top-3 Accuracy Analysis ===")
+top3_correct = 0
+for i in range(len(y_true_list)):
+    true_label = le.inverse_transform([y_true_list[i]])[0]
+    if true_label in all_top3_preds[i]:
+        top3_correct += 1
+
+top3_accuracy = top3_correct / len(y_true_list)
+print(f"Top-1 Accuracy: {acc:.4f}")
+print(f"Top-3 Accuracy: {top3_accuracy:.4f}")
+print(f"Improvement from Top-1 to Top-3: +{(top3_accuracy - acc):.4f}")

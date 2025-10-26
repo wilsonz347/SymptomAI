@@ -1,6 +1,7 @@
 import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from model.input_preds import DiseasePredictor
 
 
 app = Flask(__name__)

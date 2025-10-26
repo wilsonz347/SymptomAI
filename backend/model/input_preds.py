@@ -6,7 +6,7 @@ import numpy as np
 
 
 class DiseasePredictor:
-    def __init__(self, model_path=Config.Config.MODEL_SAVE_PATH, training_data_path=Config.Config.PROCESSED_TRAIN_PATH):
+    def __init__(self, model_path="/Users/arush/Documents/ML Projects/DS_X_Hackaton/datadawgs/backend/model/model.pth", training_data_path=Config.Config.PROCESSED_TRAIN_PATH):
         self.device = torch.device(Config.Config.DEVICE)
         if training_data_path:
             df = pd.read_csv(training_data_path)
@@ -85,4 +85,3 @@ if __name__ == "__main__":
     )
     sample_symptoms = ["fever", "cough", "headache"]
     predictions = predictor.get_top_predictions(sample_symptoms, top_k=3)
-

@@ -3,7 +3,9 @@ numpy
 flask
 scikit-learn
 matplotlib
-request
+requests
 flask-cors
 torch
 tqdm
+load_dotenv
+openai
